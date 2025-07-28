@@ -4,7 +4,29 @@
   config,
   ...
 }: let
-  inherit (lib) types mkOption;
+  inherit (lib) mkOptionType isType filterAttrs types mkOption;
+
+  unsetType = mkOptionType {
+    name = "unset";
+    description = "unset";
+    descriptionClass = "noun";
+    check = value: true;
+  };
+  unset = {
+    _type = "unset";
+  };
+  isUnset = isType "unset";
+  unsetOr = types.either unsetType;
+
+  filterUnset = value:
+    if builtins.isAttrs value && !builtins.hasAttr "_type" value
+    then let
+      filteredAttrs = builtins.mapAttrs (n: v: filterUnset v) value;
+    in
+      filterAttrs (name: value: (!isUnset value)) filteredAttrs
+    else if builtins.isList value
+    then builtins.filter (elem: !isUnset elem) (map filterUnset value)
+    else value;
 
   collectionType = types.submodule {
     options = {
@@ -18,6 +40,54 @@
       };
     };
   };
+  tasksType = types.submodule {
+    freeformType = types.attrsOf (types.attrsOf types.anything);
+    options = {
+      name = mkOption {
+        type = unsetOr types.str;
+        default = unset;
+      };
+      register = mkOption {
+        type = unsetOr types.str;
+        default = unset;
+      };
+      block = mkOption {
+        type = unsetOr (types.listOf tasksType);
+        default = unset;
+      };
+      always = mkOption {
+        type = unsetOr (types.listOf types.attrs);
+        default = unset;
+      };
+    };
+  };
+  playbookType = types.listOf (types.submodule {
+    options = {
+      name = mkOption {
+        type = types.str;
+        description = "Name of the play";
+      };
+      hosts = mkOption {
+        type = types.str;
+        description = "The target hosts for this play (e.g., 'all', 'webservers')";
+      };
+      become = mkOption {
+        type = unsetOr types.bool;
+        default = unset;
+        description = "Whether to use privilege escalation (become: yes)";
+      };
+      gather_facts = mkOption {
+        type = unsetOr types.bool;
+        default = unset;
+        description = "";
+      };
+      tasks = mkOption {
+        type = types.listOf tasksType;
+        default = [];
+        description = "List of tasks to execute in this play";
+      };
+    };
+  });
 in {
   options = {
     ansiblePackage = mkOption {
@@ -36,28 +106,8 @@ in {
       description = "List of packages to include at runtime";
     };
     playbook = mkOption {
-      type = types.listOf (types.submodule {
-        options = {
-          name = mkOption {
-            type = types.str;
-            description = "Name of the play";
-          };
-          hosts = mkOption {
-            type = types.str;
-            description = "The target hosts for this play (e.g., 'all', 'webservers')";
-          };
-          become = mkOption {
-            type = types.bool;
-            default = false;
-            description = "Whether to use privilege escalation (become: yes)";
-          };
-          tasks = mkOption {
-            type = types.listOf types.attrs;
-            default = [];
-            description = "List of tasks to execute in this play";
-          };
-        };
-      });
+      type = playbookType;
+      apply = res: filterUnset res;
       description = "The actual playbook, defined as a Nix data structure";
     };
 
