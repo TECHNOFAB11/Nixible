@@ -230,16 +230,17 @@
     "nix-mkdocs": {
       "locked": {
         "dir": "lib",
-        "lastModified": 1745841841,
-        "narHash": "sha256-297zPQbUlc7ZAYDoaD6mCmQxCC3Tr4YOKekRF1ArZ7g=",
+        "lastModified": 1754753501,
+        "narHash": "sha256-k7KEGQ7qejmwrSXVSvZ9zVD1H+ZtNm0I5fmCVmZVi+4=",
         "owner": "technofab",
         "repo": "nixmkdocs",
-        "rev": "c7e3c3b13ded25818e9789938387bba6f2cde690",
+        "rev": "aba4f26f320b15043101824b65e72058ecab296f",
         "type": "gitlab"
       },
       "original": {
         "dir": "lib",
         "owner": "technofab",
+        "ref": "v1.0.0",
         "repo": "nixmkdocs",
         "type": "gitlab"
       }

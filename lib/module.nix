@@ -4,7 +4,7 @@
   config,
   ...
 }: let
-  inherit (lib) mkOptionType isType filterAttrs types mkOption;
+  inherit (lib) mkOptionType isType filterAttrs types mkOption literalExpression;
 
   unsetType = mkOptionType {
     name = "unset";
@@ -16,7 +16,11 @@
     _type = "unset";
   };
   isUnset = isType "unset";
-  unsetOr = types.either unsetType;
+  unsetOr = typ:
+    (types.either unsetType typ)
+    // {
+      description = typ.description;
+    };
 
   filterUnset = value:
     if builtins.isAttrs value && !builtins.hasAttr "_type" value
@@ -28,93 +32,226 @@
     then builtins.filter (elem: !isUnset elem) (map filterUnset value)
     else value;
 
+  mkUnsetOption = args:
+    mkOption args
+    // {
+      type = unsetOr args.type;
+      default = unset;
+      defaultText = literalExpression "unset";
+    };
+
   collectionType = types.submodule {
     options = {
       version = mkOption {
         type = types.str;
-        description = "Version of collection";
+        description = ''
+          Version of the collection.
+        '';
+        example = "1.0.0";
       };
       hash = mkOption {
         type = types.str;
-        description = "Hash of the collection tarball";
+        description = ''
+          SHA256 hash of the collection tarball for verification.
+        '';
+        example = "sha256-...";
       };
     };
   };
   tasksType = types.submodule {
     freeformType = types.attrsOf (types.attrsOf types.anything);
     options = {
-      name = mkOption {
-        type = unsetOr types.str;
-        default = unset;
+      name = mkUnsetOption {
+        type = types.str;
+        description = ''
+          Name of the task.
+        '';
       };
-      register = mkOption {
-        type = unsetOr types.str;
-        default = unset;
+      register = mkUnsetOption {
+        type = types.str;
+        description = ''
+          Register the task's output to a variable.
+        '';
       };
-      block = mkOption {
-        type = unsetOr (types.listOf tasksType);
-        default = unset;
+      block = mkUnsetOption {
+        type = types.listOf tasksType;
+        description = ''
+          A block of tasks to execute.
+        '';
       };
-      always = mkOption {
-        type = unsetOr (types.listOf types.attrs);
-        default = unset;
+      rescue = mkUnsetOption {
+        type = types.listOf tasksType;
+        description = ''
+          A list of tasks to execute on failure of block tasks.
+        '';
+      };
+      always = mkUnsetOption {
+        type = types.listOf types.attrs;
+        description = ''
+          Tasks that always run, regardless of task status.
+        '';
+      };
+      delegate_to = mkUnsetOption {
+        type = types.str;
+        description = ''
+          Delegate task execution to another host.
+        '';
+      };
+      ignore_errors = mkUnsetOption {
+        type = types.bool;
+        description = ''
+          Ignore errors and continue with the playbook.
+        '';
+      };
+      loop = mkUnsetOption {
+        type = types.anything;
+        description = ''
+          Define a loop for the task.
+        '';
+      };
+      when = mkUnsetOption {
+        type = types.str;
+        description = ''
+          Condition under which the task runs.
+        '';
       };
     };
   };
-  playbookType = types.listOf (types.submodule {
+  playType = types.submodule {
+    freeformType = types.attrsOf (types.attrsOf types.anything);
     options = {
       name = mkOption {
         type = types.str;
-        description = "Name of the play";
+        description = ''
+          Name of the play.
+        '';
       };
       hosts = mkOption {
         type = types.str;
-        description = "The target hosts for this play (e.g., 'all', 'webservers')";
+        description = ''
+          The target hosts for this play (e.g., 'all', 'webservers').
+        '';
+        example = "all";
       };
-      become = mkOption {
-        type = unsetOr types.bool;
-        default = unset;
-        description = "Whether to use privilege escalation (become: yes)";
+      remote_user = mkUnsetOption {
+        type = types.str;
+        description = ''
+          The user to execute tasks as on the remote server.
+        '';
       };
-      gather_facts = mkOption {
-        type = unsetOr types.bool;
-        default = unset;
-        description = "";
+      tags = mkUnsetOption {
+        type = types.listOf types.str;
+        description = ''
+          Tags to filter tasks to run.
+        '';
+      };
+      become = mkUnsetOption {
+        type = types.bool;
+        description = ''
+          Whether to use privilege escalation (become: yes).
+        '';
+      };
+      become_method = mkUnsetOption {
+        type = types.str;
+        description = ''
+          Privilege escalation method.
+        '';
+      };
+      vars = mkUnsetOption {
+        type = types.attrs;
+        description = ''
+          Variables for the play.
+        '';
+      };
+      gather_facts = mkUnsetOption {
+        type = types.either types.bool types.str;
+        description = ''
+          Whether to run the setup module to gather facts before executing tasks.
+        '';
+      };
+      when = mkUnsetOption {
+        type = types.str;
+        description = ''
+          Condition under which the play runs.
+        '';
       };
       tasks = mkOption {
         type = types.listOf tasksType;
         default = [];
-        description = "List of tasks to execute in this play";
+        description = ''
+          List of tasks to execute in this play
+        '';
       };
     };
-  });
+  };
+  playbookType = types.listOf playType;
 in {
   options = {
     ansiblePackage = mkOption {
       type = types.package;
       default = pkgs.python3Packages.callPackage ./ansible-core.nix {};
-      description = "Ansible package to use (default doesn't have any collections installed for size)";
+      description = ''
+        The Ansible package to use. The default package is optimized for size, by not including the gazillion collections that pkgs.ansible and pkgs.ansible-core include.
+      '';
+      example = literalExpression "pkgs.ansible";
     };
     collections = mkOption {
       type = types.attrsOf collectionType;
       default = {};
-      description = "Collections to fetch and install";
+      description = ''
+        Ansible collections to fetch and install from Galaxy.
+      '';
+      example = {
+        "community-general" = {
+          version = "8.0.0";
+          hash = "sha256-...";
+        };
+      };
     };
     dependencies = mkOption {
       type = types.listOf types.package;
       default = [];
       description = "List of packages to include at runtime";
+      example = literalExpression "[pkgs.git pkgs.rsync]";
     };
     playbook = mkOption {
       type = playbookType;
       apply = res: filterUnset res;
       description = "The actual playbook, defined as a Nix data structure";
+      example = [
+        {
+          name = "Configure servers";
+          hosts = "webservers";
+          become = true;
+          tasks = [
+            {
+              name = "Install nginx";
+              package = {
+                name = "nginx";
+                state = "present";
+              };
+            }
+          ];
+        }
+      ];
     };
 
     inventory = mkOption {
       type = types.attrs;
       default = {};
-      description = "Ansible inventory, will be converted to json and passed to ansible";
+      description = ''
+        Ansible inventory, will be converted to JSON and passed to Ansible.
+      '';
+      example = {
+        webservers = {
+          hosts = {
+            web1 = {ansible_host = "192.168.1.10";};
+          };
+          vars = {
+            http_port = 80;
+          };
+        };
+      };
     };
 
     inventoryFile = mkOption {

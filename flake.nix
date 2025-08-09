@@ -17,6 +17,7 @@
       perSystem = {
         lib,
         pkgs,
+        self',
         config,
         ...
       }: {
@@ -42,6 +43,7 @@
           path = ./docs;
           deps = pp: [
             pp.mkdocs-material
+            pp.mkdocs-macros
             (pp.callPackage inputs.mkdocs-material-umami {})
           ];
           config = {
@@ -78,12 +80,21 @@
                 }
               ];
             };
-            plugins = ["search" "material-umami"];
+            plugins = [
+              "search"
+              "material-umami"
+              {
+                macros = {
+                  include_dir = self'.packages.optionsDocs;
+                };
+              }
+            ];
             nav = [
               {"Introduction" = "index.md";}
               {"Usage" = "usage.md";}
               {"Examples" = "examples.md";}
               {"Reference" = "reference.md";}
+              {"Options" = "options.md";}
             ];
             markdown_extensions = [
               "pymdownx.superfences"
@@ -174,13 +185,34 @@
         packages = let
           nblib = import ./lib {inherit pkgs lib;};
           ntlib = inputs.nixtest.lib {inherit pkgs lib;};
-        in {
+          doclib = inputs.nix-mkdocs.lib {inherit lib pkgs;};
+        in rec {
           tests = ntlib.mkNixtest {
             modules = ntlib.autodiscover {dir = ./tests;};
             args = {
               inherit pkgs nblib ntlib;
             };
           };
+          optionsDoc = doclib.mkOptionDocs {
+            module = {
+              imports = [
+                nblib.module
+                {
+                  _module.args.pkgs = pkgs;
+                }
+              ];
+            };
+            roots = [
+              {
+                url = "https://gitlab.com/TECHNOFAB/nixible/-/blob/main/lib";
+                path = toString ./lib;
+              }
+            ];
+          };
+          optionsDocs = pkgs.runCommand "options-docs" {} ''
+            mkdir -p $out
+            ln -s ${optionsDoc} $out/options.md
+          '';
         };
       };
     };
@@ -195,7 +227,7 @@
     treefmt-nix.url = "github:numtide/treefmt-nix";
     nix-gitlab-ci.url = "gitlab:technofab/nix-gitlab-ci?dir=lib";
     nixtest.url = "gitlab:technofab/nixtest?dir=lib";
-    nix-mkdocs.url = "gitlab:technofab/nixmkdocs?dir=lib";
+    nix-mkdocs.url = "gitlab:technofab/nixmkdocs/v1.0.0?dir=lib";
     mkdocs-material-umami.url = "gitlab:technofab/mkdocs-material-umami";
   };
 
