@@ -39,56 +39,36 @@
             convco.enable = true;
           };
         };
-        doc = {
+        docs."default".config = {
           path = ./docs;
-          deps = pp: [
-            pp.mkdocs-material
-            pp.mkdocs-macros
-            (pp.callPackage inputs.mkdocs-material-umami {})
-          ];
+          material = {
+            enable = true;
+            colors = {
+              primary = "black";
+              accent = "blue";
+            };
+            umami = {
+              enable = true;
+              src = "https://analytics.tf/umami";
+              siteId = "d8354dfa-2ad2-4089-90d2-899b981aef22";
+              domains = ["nixible.projects.tf"];
+            };
+          };
+          macros = {
+            enable = true;
+            includeDir = toString self'.packages.optionsDocs;
+          };
           config = {
             site_name = "Nixible";
+            site_url = "https://nixible.projects.tf";
             repo_name = "TECHNOFAB/nixible";
             repo_url = "https://gitlab.com/TECHNOFAB/nixible";
-            edit_uri = "edit/main/docs/";
+            extra_css = ["style.css"];
             theme = {
-              name = "material";
-              features = ["content.code.copy" "content.action.edit"];
               icon.repo = "simple/gitlab";
-              logo = "images/logo.png";
-              favicon = "images/favicon.png";
-              palette = [
-                {
-                  scheme = "default";
-                  media = "(prefers-color-scheme: light)";
-                  primary = "black";
-                  accent = "blue";
-                  toggle = {
-                    icon = "material/brightness-7";
-                    name = "Switch to dark mode";
-                  };
-                }
-                {
-                  scheme = "slate";
-                  media = "(prefers-color-scheme: dark)";
-                  primary = "black";
-                  accent = "blue";
-                  toggle = {
-                    icon = "material/brightness-4";
-                    name = "Switch to light mode";
-                  };
-                }
-              ];
+              logo = "images/logo.svg";
+              favicon = "images/logo.svg";
             };
-            plugins = [
-              "search"
-              "material-umami"
-              {
-                macros = {
-                  include_dir = self'.packages.optionsDocs;
-                };
-              }
-            ];
             nav = [
               {"Introduction" = "index.md";}
               {"Usage" = "usage.md";}
@@ -100,29 +80,6 @@
               "pymdownx.superfences"
               "admonition"
             ];
-            extra.analytics = {
-              provider = "umami";
-              site_id = "d8354dfa-2ad2-4089-90d2-899b981aef22";
-              src = "https://analytics.tf/umami";
-              domains = "nixible.projects.tf";
-              feedback = {
-                title = "Was this page helpful?";
-                ratings = [
-                  {
-                    icon = "material/thumb-up-outline";
-                    name = "This page is helpful";
-                    data = "good";
-                    note = "Thanks for your feedback!";
-                  }
-                  {
-                    icon = "material/thumb-down-outline";
-                    name = "This page could be improved";
-                    data = "bad";
-                    note = "Thanks for your feedback! Please leave feedback by creating an issue :)";
-                  }
-                ];
-              };
-            };
           };
         };
         ci = {
@@ -227,7 +184,7 @@
     treefmt-nix.url = "github:numtide/treefmt-nix";
     nix-gitlab-ci.url = "gitlab:technofab/nix-gitlab-ci?dir=lib";
     nixtest.url = "gitlab:technofab/nixtest?dir=lib";
-    nix-mkdocs.url = "gitlab:technofab/nixmkdocs/v1.0.0?dir=lib";
+    nix-mkdocs.url = "gitlab:technofab/nixmkdocs?dir=lib";
     mkdocs-material-umami.url = "gitlab:technofab/mkdocs-material-umami";
   };
 
