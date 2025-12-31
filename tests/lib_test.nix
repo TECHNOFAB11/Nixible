@@ -28,6 +28,7 @@
         in
           # sh
           ''
+            ${ntlib.helpers.path [pkgs.gnugrep]}
             ${ntlib.helpers.scriptHelpers}
 
             # Check CLI contains expected content
@@ -113,6 +114,7 @@
         in
           # sh
           ''
+            ${ntlib.helpers.path [pkgs.gnugrep]}
             ${ntlib.helpers.scriptHelpers}
 
             # Check playbook file exists
@@ -143,6 +145,7 @@
         in
           # sh
           ''
+            ${ntlib.helpers.path [pkgs.gnugrep]}
             ${ntlib.helpers.scriptHelpers}
 
             # check that custom ansible package is used

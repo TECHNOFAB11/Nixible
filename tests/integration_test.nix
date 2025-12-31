@@ -84,6 +84,7 @@
         in
           # sh
           ''
+            ${ntlib.helpers.path [pkgs.gnugrep]}
             ${ntlib.helpers.scriptHelpers}
 
             assert "-f ${result.config.inventoryFile}" "SOPS example should generate inventory"
