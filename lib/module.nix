@@ -10,7 +10,7 @@
     name = "unset";
     description = "unset";
     descriptionClass = "noun";
-    check = value: isType "unset";
+    check = isType "unset";
   };
   unset = {
     _type = "unset";
