@@ -19,7 +19,7 @@
   unsetOr = typ:
     (types.either unsetType typ)
     // {
-      description = typ.description;
+      inherit (typ) description getSubOptions;
     };
 
   filterUnset = value:
@@ -36,7 +36,7 @@
     mkOption args
     // {
       type = unsetOr args.type;
-      default = unset;
+      default = args.default or unset;
       defaultText = literalExpression "unset";
     };
 
@@ -59,7 +59,7 @@
     };
   };
   tasksType = types.submodule {
-    freeformType = types.attrsOf (types.attrsOf types.anything);
+    freeformType = types.attrsOf types.anything;
     options = {
       name = mkUnsetOption {
         type = types.str;
@@ -118,7 +118,7 @@
     };
   };
   playType = types.submodule {
-    freeformType = types.attrsOf (types.attrsOf types.anything);
+    freeformType = types.attrsOf types.anything;
     options = {
       name = mkOption {
         type = types.str;
@@ -278,12 +278,17 @@ in {
     cli = pkgs.writeShellApplication {
       name = "nixible";
       runtimeInputs = config.dependencies;
-      text = ''
+      text = let
+        inventoryStr =
+          if config.inventory != {}
+          then "-i ${config.inventoryFile}"
+          else "";
+      in ''
         set -euo pipefail
         export ANSIBLE_COLLECTIONS_PATH=${config.installedCollections}
 
         git_repo=$(git rev-parse --show-toplevel 2>/dev/null || true)
-        ${config.ansiblePackage}/bin/ansible-playbook -i ${config.inventoryFile} ${config.playbookFile} -e "pwd=$(pwd)" -e "git_root=$git_repo" "$@"
+        ${config.ansiblePackage}/bin/ansible-playbook ${inventoryStr} ${config.playbookFile} -e "pwd=$(pwd)" -e "git_root=$git_repo" "$@"
       '';
     };
   };

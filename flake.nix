@@ -152,11 +152,9 @@
           };
           optionsDoc = doclib.mkOptionDocs {
             module = {
+              _module.args.pkgs = pkgs;
               imports = [
                 nblib.module
-                {
-                  _module.args.pkgs = pkgs;
-                }
               ];
             };
             roots = [
