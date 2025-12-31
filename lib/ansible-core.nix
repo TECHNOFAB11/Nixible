@@ -26,32 +26,27 @@
 }:
 buildPythonPackage rec {
   pname = "ansible-core";
-  version = "2.18.6";
+  version = "2.19.2";
   pyproject = true;
 
   src = fetchPypi {
     pname = "ansible_core";
     inherit version;
-    hash = "sha256-JbsgzhUWobcweDGyY872hAQ7NyBxFGa9nUFk5f1XZVc=";
+    hash = "sha256-h/y7xJLtFutq2wN5uuCtv2nzzoioRA5+iODc76n4pUw=";
   };
 
   # ansible_connection is already wrapped, so don't pass it through
   # the python interpreter again, as it would break execution of
   # connection plugins.
   postPatch = ''
-    substituteInPlace lib/ansible/executor/task_executor.py \
-      --replace "[python," "["
-
     patchShebangs --build packaging/cli-doc/build.py
 
     SETUPTOOLS_PATTERN='"setuptools[0-9 <>=.,]+"'
-    PYPROJECT=$(cat pyproject.toml)
-    if [[ "$PYPROJECT" =~ $SETUPTOOLS_PATTERN ]]; then
-      echo "setuptools replace: ''${BASH_REMATCH[0]}"
-      echo "''${PYPROJECT//''${BASH_REMATCH[0]}/'"setuptools"'}" > pyproject.toml
-    else
-      exit 2
-    fi
+    WHEEL_PATTERN='"wheel[0-9 <>=.,]+"'
+    echo "Patching pyproject.toml"
+    # print replaced patterns to stdout
+    sed -r -i -e 's/'"$SETUPTOOLS_PATTERN"'/"setuptools"/w /dev/stdout' \
+    -e 's/'"$WHEEL_PATTERN"'/"wheel"/w /dev/stdout' pyproject.toml
   '';
 
   nativeBuildInputs = [
@@ -85,6 +80,12 @@ buildPythonPackage rec {
     ++ lib.optionals windowsSupport [pywinrm];
 
   pythonRelaxDeps = ["resolvelib"];
+
+  postInstall = ''
+    export HOME="$(mktemp -d)"
+    packaging/cli-doc/build.py man --output-dir=man
+    installManPage man/*
+  '';
 
   # internal import errors, missing dependencies
   doCheck = false;
