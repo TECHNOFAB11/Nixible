@@ -10,7 +10,7 @@
     name = "unset";
     description = "unset";
     descriptionClass = "noun";
-    check = value: true;
+    check = isType "unset";
   };
   unset = {
     _type = "unset";
@@ -33,12 +33,18 @@
     else value;
 
   mkUnsetOption = args:
-    mkOption args
-    // {
-      type = unsetOr args.type;
-      default = args.default or unset;
-      defaultText = literalExpression "unset";
-    };
+    mkOption (args
+      // {
+        type = unsetOr args.type;
+        default = args.default or unset;
+        defaultText = literalExpression "unset";
+      });
+  # no "getSubOptions" here, otherwise its infinite recursion
+  mkUnsetOptionNoSub = args:
+    mkUnsetOption (args
+      // {
+        type = (types.either unsetType args.type) // {inherit (args.type) description;};
+      });
 
   collectionType = types.submodule {
     options = {
@@ -73,14 +79,14 @@
           Register the task's output to a variable.
         '';
       };
-      block = mkUnsetOption {
-        type = types.listOf tasksType;
+      block = mkUnsetOptionNoSub {
+        type = types.listOf (tasksType // {description = "tasksType";});
         description = ''
           A block of tasks to execute.
         '';
       };
-      rescue = mkUnsetOption {
-        type = types.listOf tasksType;
+      rescue = mkUnsetOptionNoSub {
+        type = types.listOf (tasksType // {description = "tasksType";});
         description = ''
           A list of tasks to execute on failure of block tasks.
         '';
@@ -189,9 +195,19 @@ in {
   options = {
     ansiblePackage = mkOption {
       type = types.package;
-      default = pkgs.python3Packages.callPackage ./ansible-core.nix {};
+      default = pkgs.ansible.overridePythonAttrs (before: {
+        # filter out "ansible" (non-core) since its useless for nixible and just bloats stuff...
+        dependencies = builtins.filter (el: el.pname != "ansible") before.dependencies;
+      });
+      defaultText = literalExpression ''
+        pkgs.ansible.overridePythonAttrs (before: {
+          dependencies = builtins.filter (el: el.pname != "ansible") before.dependencies;
+        })
+      '';
       description = ''
-        The Ansible package to use. The default package is optimized for size, by not including the gazillion collections that pkgs.ansible and pkgs.ansible-core include.
+        The Ansible package to use.
+        The default package is optimized for size, by not including the gazillion collections that
+        `pkgs.ansible` and `pkgs.ansible-core` include by default.
       '';
       example = literalExpression "pkgs.ansible";
     };
@@ -216,7 +232,7 @@ in {
     };
     playbook = mkOption {
       type = playbookType;
-      apply = res: filterUnset res;
+      # apply = res: filterUnset res;
       description = "The actual playbook, defined as a Nix data structure";
       example = [
         {
@@ -273,7 +289,7 @@ in {
   };
   config = {
     inventoryFile = (pkgs.formats.json {}).generate "inventory.json" config.inventory;
-    playbookFile = (pkgs.formats.yaml {}).generate "playbook.yml" config.playbook;
+    playbookFile = (pkgs.formats.yaml {}).generate "playbook.yml" (filterUnset config.playbook);
     installedCollections = pkgs.callPackage ./ansible-collections.nix {} config.ansiblePackage config.collections;
     cli = pkgs.writeShellApplication {
       name = "nixible";
@@ -283,13 +299,15 @@ in {
           if config.inventory != {}
           then "-i ${config.inventoryFile}"
           else "";
-      in ''
-        set -euo pipefail
-        export ANSIBLE_COLLECTIONS_PATH=${config.installedCollections}
+      in
+        # sh
+        ''
+          set -euo pipefail
+          export ANSIBLE_COLLECTIONS_PATH=${config.installedCollections}
 
-        git_repo=$(git rev-parse --show-toplevel 2>/dev/null || true)
-        ${config.ansiblePackage}/bin/ansible-playbook ${inventoryStr} ${config.playbookFile} -e "pwd=$(pwd)" -e "git_root=$git_repo" "$@"
-      '';
+          git_repo=$(git rev-parse --show-toplevel 2>/dev/null || true)
+          ${config.ansiblePackage}/bin/ansible-playbook ${inventoryStr} ${config.playbookFile} -e "pwd=$(pwd)" -e "git_root=$git_repo" "$@"
+        '';
     };
   };
 }

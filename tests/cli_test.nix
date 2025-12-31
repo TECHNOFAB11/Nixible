@@ -25,6 +25,7 @@
         in
           # sh
           ''
+            ${ntlib.helpers.path [pkgs.gnugrep]}
             ${ntlib.helpers.scriptHelpers}
 
             # check that dependencies are included in runtime inputs
@@ -54,6 +55,7 @@
         in
           # sh
           ''
+            ${ntlib.helpers.path [pkgs.gnugrep]}
             ${ntlib.helpers.scriptHelpers}
 
             # check CLI is executable
@@ -82,6 +84,7 @@
         in
           # sh
           ''
+            ${ntlib.helpers.path [pkgs.gnugrep]}
             ${ntlib.helpers.scriptHelpers}
 
             assert_file_contains "${cli}/bin/nixible" 'export ANSIBLE_COLLECTIONS_PATH=' "should export collections path"
@@ -107,6 +110,7 @@
         in
           # sh
           ''
+            ${ntlib.helpers.path [pkgs.gnugrep]}
             ${ntlib.helpers.scriptHelpers}
 
             # check runtime dependencies are properly included
