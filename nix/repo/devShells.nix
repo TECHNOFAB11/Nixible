@@ -11,12 +11,15 @@
       alejandra.enable = true;
       mdformat.enable = true;
     };
-    settings.formatter.mdformat.command = let
-      pkg = pkgs.python3.withPackages (p: [
-        p.mdformat
-        p.mdformat-mkdocs
-      ]);
-    in "${pkg}/bin/mdformat";
+    settings.formatter.mdformat = {
+      excludes = ["CHANGELOG.md"];
+      command = let
+        pkg = pkgs.python3.withPackages (p: [
+          p.mdformat
+          p.mdformat-mkdocs
+        ]);
+      in "${pkg}/bin/mdformat";
+    };
   };
 in {
   default = devshell.mkShell {
